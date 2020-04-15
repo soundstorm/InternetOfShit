@@ -2,7 +2,6 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
-#include <ESP8266HTTPClient.h>
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
