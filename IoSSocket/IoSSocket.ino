@@ -92,7 +92,7 @@ void setup() {
 	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
-	msg = String("{\"name\":\"Briefkasten Spannung\",)" + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
+	msg = String("{\"name\":\"Briefkasten Spannung\",") + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
 	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
