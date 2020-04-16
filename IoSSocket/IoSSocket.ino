@@ -87,13 +87,14 @@ void setup() {
 		ESP.restart();
 	}
 	client.loop();
-	const char* msg_bs = "{\"name\":\"Briefkasten\",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"}";
-	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", strlen(msg_bs), true);
-	client.print(msg_bs);
+	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\"1.3\"}";
+	String msg = String("{\"name\":\"Briefkasten\",") + dev + ",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"}";
+	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
+	client.print(msg.c_str());
 	client.endPublish();
-	const char* msg_sv = "{\"name\":\"Briefkasten Spannung\",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
-	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", strlen(msg_sv), true);
-	client.print(msg_sv);
+	msg = String("{\"name\":\"Briefkasten Spannung\",)" + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
+	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
+	client.print(msg.c_str());
 	client.endPublish();
 	client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
 }
