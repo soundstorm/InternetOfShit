@@ -1,22 +1,45 @@
+/*
+ * This example acts as mailbox notifier for Home Assistant
+ * Configuration is automatically done via MQTT auto discovery
+ * Just configure your MQTT and WiFi settings and you're good to go
+ * Switch for occupancy on (new mail) on IO4
+ * Switch for occupancy off (postbox empty or at least looked inside ;-) on IO5
+ * Switches must only close if action should be triggered.
+ * So generally normally connected tactile switches are useful.
+ */
+
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
 
+IPAddress MQTT_SERVER(10, 0, 0, 1); // IP of your Broker
+//const char* MQTT_SERVER = "mqtt.arduino-hannover.de"; // Or FQDN
+const char* MQTT_USER = NULL;
+const char* MQTT_PASSWORD = NULL;
+
+const char* WIFI_SSID = "ssid";
+const char* WIFI_PASSWORD = "password";
+
+// You may need to adjust this to fit your resistor tolerance exactly
+const double ADC_TO_VOLTAGE = 0.004324894515;
+
+
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
 
-boolean button[3];
+boolean button[5];
 Adafruit_NeoPixel led = Adafruit_NeoPixel(1, LED_PIN, NEO_RGB + NEO_KHZ800);
-bool otaRunning = false;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-IPAddress mqtt_server(10, 0, 0, 1);
 
 void setup() {
 	digitalWrite(SHDN_PIN, HIGH);
 	pinMode(SHDN_PIN, OUTPUT);
+	// For use with Internet of Shit Socket
+	// Connect mail detection switch to IO4 (new mail)
+	// Connect mail removal detection switch to IO5 (empty)
 	pinMode(4, INPUT_PULLUP);
 	pinMode(5, INPUT_PULLUP);
 	pinMode(12, INPUT_PULLUP);
@@ -30,7 +53,7 @@ void setup() {
 	led.begin();
 	Serial.begin(115200);
   
-	WiFi.begin("SSID", "password");
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
 	uint32_t con_start = millis();
 	int8_t f = 0;
@@ -50,10 +73,10 @@ void setup() {
 		digitalWrite(SHDN_PIN, LOW);
 		delay(50);
 	}
-	client.setServer(mqtt_server, 1883);
+	client.setServer(MQTT_SERVER, 1883);
 	
 	Serial.println("Connecting MQTT...");
-	if (!client.connect("Briefkasten")) {
+	if (!client.connect("IoS-Briefkasten", MQTT_USER, MQTT_PASSWORD)) {
 		Serial.println("MQTT Failed");
 		led.setPixelColor(0, 128, 0, 128);
 		led.show();
@@ -64,9 +87,15 @@ void setup() {
 		ESP.restart();
 	}
 	client.loop();
-	client.publish("homeassistant/binary_sensor/briefkasten/config", "{\"name\":\"Briefkasten\",\"stat_t\":\"briefkasten\",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"}", (bool)true);
-	client.publish("homeassistant/sensor/briefkasten_voltage/config", "{\"name\":\"Briefkasten Spannung\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}", (bool)true);
-	client.publish("briefkasten/v", String(analogRead(0) * 0.004324894515).c_str(), (bool)true);
+	const char* msg_bs = "{\"name\":\"Briefkasten\",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"}";
+	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", strlen(msg_bs), true);
+	client.print(msg_bs);
+	client.endPublish();
+	const char* msg_sv = "{\"name\":\"Briefkasten Spannung\",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
+	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", strlen(msg_sv), true);
+	client.print(msg_sv);
+	client.endPublish();
+	client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
 }
 
 void blink(uint8_t n, uint32_t c) {
@@ -81,14 +110,25 @@ void blink(uint8_t n, uint32_t c) {
 }
 
 void loop() {
-	if (button[0]) {
+	if (button[0]) { // IO4
 		client.publish("briefkasten", "ON", (bool)true);
 		blink(1, 0x8800);
-	} else if (button[1]) {
+	} else if (button[1]) { // IO5
 		client.publish("briefkasten", "OFF", (bool)true);
 		blink(2, 0x8800);
-	} //...
-	// client.disconnect(); //graceful shutdown
+	} else if (button[2]) { // IO13
+		blink(3, 0x88);
+	} else if (button[3]) { // IO12
+		blink(4, 0x88);
+	} else if (button[4]) { // IO14
+		blink(5, 0x88);
+	} else { // No button press recognized
+	}
+	/*
+	 * graceful shutdown, if you don't want to report voltage while any contact is still pressed
+	 * use client.disconnect() but then comment out client.publish at the end
+	 */
+	//client.disconnect();
 	for (uint8_t i = 0; i < 5; i++) {
 		Serial.print("Button ");
 		Serial.print(i+1);
@@ -97,14 +137,14 @@ void loop() {
 	}
 	if (!digitalRead(4) || !digitalRead(5) || !digitalRead(12) || !digitalRead(13) || !digitalRead(14)) {
 		blink(1, 0x000088);
-		led.setPixelColor(0, 0x010000);
+		led.setPixelColor(0, 0x010000); // Set dim red to show "I'm alive" but not drawing too much current
 		led.show();
 	}
 	delay(200);
 	pinMode(SHDN_PIN, INPUT);
 	while (true) { // As long as any button is pressed report battery voltage every 60s
 		delay(60000);
-		client.publish("briefkasten/v", String(analogRead(0) * 0.004324894515).c_str(), (bool)true);
+		client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
 	}
-  // Deepsleep doesn't work as the ESP is drawing too less current then to shutdown the system
+	// Deepsleep doesn't work as the ESP is drawing too less current then to shutdown the system
 }
