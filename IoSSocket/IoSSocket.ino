@@ -24,6 +24,7 @@ const char* WIFI_PASSWORD = "password";
 // You may need to adjust this to fit your resistor tolerance exactly
 const double ADC_TO_VOLTAGE = 0.004324894515;
 
+const char[] SW_VERSION = "1.4"
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -88,7 +89,7 @@ void setup() {
 		ESP.restart();
 	}
 	client.loop();
-	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\"1.3\"}";
+	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\"+ SW_VERSION +\"}";
 	String msg = String("{\"name\":\"Briefkasten\",") + dev + ",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"dev_cla\":\"occupancy\"}";
 	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
 	client.print(msg.c_str());
