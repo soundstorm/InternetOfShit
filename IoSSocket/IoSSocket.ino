@@ -76,7 +76,8 @@ void setup() {
 	client.setServer(MQTT_SERVER, 1883);
 	
 	Serial.println("Connecting MQTT...");
-	if (!client.connect("IoS-Briefkasten", MQTT_USER, MQTT_PASSWORD)) {
+	// Send "no problem" detected when disconnecting as last will
+	if (!client.connect("IoS-Briefkasten", MQTT_USER, MQTT_PASSWORD, "briefkasten/b", 0, "OFF", true)) {
 		Serial.println("MQTT Failed");
 		led.setPixelColor(0, 128, 0, 128);
 		led.show();
@@ -88,12 +89,16 @@ void setup() {
 	}
 	client.loop();
 	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\"1.3\"}";
-	String msg = String("{\"name\":\"Briefkasten\",") + dev + ",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"pl_on\":\"ON\",\"pl_off\":\"OFF\"}";
+	String msg = String("{\"name\":\"Briefkasten\",") + dev + ",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"dev_cla\":\"occupancy\"}";
 	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
-	msg = String("{\"name\":\"Briefkasten Spannung\",") + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\"}";
+	msg = String("{\"name\":\"Briefkasten Spannung\",") + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\",\"ic\":\"mdi:flash\"}";
 	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
+	client.print(msg.c_str());
+	client.endPublish();
+	msg = String("{\"name\":\"Briefkasten Geblockt\",") + dev + ",\"uniq_id\":\"ios-briefkasten-block\",\"stat_t\":\"briefkasten/b\",\"dev_cla\":\"problem\"}";
+	client.beginPublish("homeassistant/binary_sensor/briefkasten_block/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
 	client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
@@ -123,11 +128,11 @@ void loop() {
 		blink(4, 0x88);
 	} else if (button[4]) { // IO14
 		blink(5, 0x88);
-	} else { // No button press recognized
+	} else { // No closed contact recognized
 	}
 	/*
-	 * graceful shutdown, if you don't want to report voltage while any contact is still pressed
-	 * use client.disconnect() but then comment out client.publish at the end
+	 * Graceful shutdown, if you don't want to report problem/voltage while any contact is still closed
+	 * Use client.disconnect() but then comment out client.publish at the end
 	 */
 	//client.disconnect();
 	for (uint8_t i = 0; i < 5; i++) {
@@ -137,14 +142,19 @@ void loop() {
 		Serial.println(button[i]);
 	}
 	if (!digitalRead(4) || !digitalRead(5) || !digitalRead(12) || !digitalRead(13) || !digitalRead(14)) {
+		// Not yet all contacts open again
 		blink(1, 0x000088);
 		led.setPixelColor(0, 0x010000); // Set dim red to show "I'm alive" but not drawing too much current
 		led.show();
 	}
 	delay(200);
+	// Turn off (at least try it)
 	pinMode(SHDN_PIN, INPUT);
-	while (true) { // As long as any button is pressed report battery voltage every 60s
+	while (true) { // As long as any contact is closed report battery voltage every 60s
 		delay(60000);
+		// Something keeps us awake, activate "problem" sensor
+		// Stays on until we disconnect and send our last will
+		client.publish("briefkasten/b", "ON", (bool)true);
 		client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
 	}
 	// Deepsleep doesn't work as the ESP is drawing too less current then to shutdown the system
