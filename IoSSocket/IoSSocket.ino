@@ -24,7 +24,7 @@ const char* WIFI_PASSWORD = "password";
 // You may need to adjust this to fit your resistor tolerance exactly
 const double ADC_TO_VOLTAGE = 0.004324894515;
 
-const char[] SW_VERSION = "1.4"
+const char SW_VERSION[] = "1.4";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -78,7 +78,7 @@ void setup() {
 	
 	Serial.println("Connecting MQTT...");
 	// Send "no problem" detected when disconnecting as last will
-	if (!client.connect("IoS-Briefkasten", MQTT_USER, MQTT_PASSWORD, "briefkasten/b", 0, "OFF", true)) {
+	if (!client.connect("IoS-Briefkasten", MQTT_USER, MQTT_PASSWORD, "briefkasten/b", 0, (bool)true, "OFF")) {
 		Serial.println("MQTT Failed");
 		led.setPixelColor(0, 128, 0, 128);
 		led.show();
