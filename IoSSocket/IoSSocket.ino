@@ -24,7 +24,7 @@ const char* WIFI_PASSWORD = "password";
 // You may need to adjust this to fit your resistor tolerance exactly
 const double ADC_TO_VOLTAGE = 0.004324894515;
 
-const char SW_VERSION[] = "1.4";
+const char SW_VERSION[] = "1.5";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -94,7 +94,12 @@ void setup() {
 	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
+	// You may disable this sensor in Home Assistant as the attributes of ios-briefkasten-bat also reflect this value
 	msg = String("{\"name\":\"Briefkasten Spannung\",") + dev + ",\"uniq_id\":\"ios-briefkasten-volt\",\"stat_t\":\"briefkasten/v\",\"unit_of_meas\":\"V\",\"ic\":\"mdi:flash\"}";
+	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
+	client.print(msg.c_str());
+	client.endPublish();
+	msg = String("{\"name\":\"Briefkasten Akku\",") + dev + ",\"uniq_id\":\"ios-briefkasten-bat\",\"stat_t\":\"briefkasten/b\",\"json_attr_t\":\"briefkasten/att\",\"dev_cla\":\"battery\"}";
 	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
@@ -102,7 +107,39 @@ void setup() {
 	client.beginPublish("homeassistant/binary_sensor/briefkasten_block/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
-	client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
+	publishBattery();
+}
+
+void publishBattery(void) {
+	uint16_t adc = analogRead(0);
+	double voltage = analogRead(0) * ADC_TO_VOLTAGE;
+	uint8_t percent = 0;
+	if (voltage > 4.15) percent = 100; else
+	if (voltage > 4.11) percent =  95; else
+	if (voltage > 4.08) percent =  90; else
+	if (voltage > 4.02) percent =  85; else
+	if (voltage > 3.98) percent =  80; else
+	if (voltage > 3.95) percent =  75; else
+	if (voltage > 3.91) percent =  70; else
+	if (voltage > 3.87) percent =  65; else
+	if (voltage > 3.85) percent =  60; else
+	if (voltage > 3.84) percent =  55; else
+	if (voltage > 3.82) percent =  50; else
+	if (voltage > 3.80) percent =  45; else
+	if (voltage > 3.79) percent =  40; else
+	if (voltage > 3.77) percent =  35; else
+	if (voltage > 3.75) percent =  30; else
+	if (voltage > 3.73) percent =  25; else
+	if (voltage > 3.71) percent =  20; else
+	if (voltage > 3.69) percent =  15; else
+	if (voltage > 3.61) percent =  10; else
+	if (voltage > 3.55) percent =   5;
+	char att[28];
+	sprintf(att, "{\"ADC\":%d,\"Voltage\":%1.2f}", adc, voltage);
+	client.publish("briefkasten/att", att, (bool)true);
+	client.publish("briefkasten/v", String(voltage).c_str(), (bool)true);
+	client.publish("briefkasten/b", String(percent).c_str(), (bool)true);
+	
 }
 
 void blink(uint8_t n, uint32_t c) {
@@ -133,7 +170,7 @@ void loop() {
 	}
 	/*
 	 * Graceful shutdown, if you don't want to report problem/voltage while any contact is still closed
-	 * Use client.disconnect() but then comment out client.publish at the end
+	 * Use client.disconnect() but then comment client.publish / publishBattery at the end
 	 */
 	//client.disconnect();
 	for (uint8_t i = 0; i < 5; i++) {
@@ -156,7 +193,7 @@ void loop() {
 		// Something keeps us awake, activate "problem" sensor
 		// Stays on until we disconnect and send our last will
 		client.publish("briefkasten/b", "ON", (bool)true);
-		client.publish("briefkasten/v", String(analogRead(0) * ADC_TO_VOLTAGE).c_str(), (bool)true);
+		publishBattery();
 	}
 	// Deepsleep doesn't work as the ESP is drawing too less current then to shutdown the system
 }
