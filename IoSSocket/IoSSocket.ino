@@ -99,7 +99,7 @@ void setup() {
 	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
-	msg = String("{\"name\":\"Briefkasten Akku\",") + dev + ",\"uniq_id\":\"ios-briefkasten-bat\",\"stat_t\":\"briefkasten/b\",\"json_attr_t\":\"briefkasten/att\",\"dev_cla\":\"battery\"}";
+	msg = String("{\"name\":\"Briefkasten Akku\",") + dev + ",\"uniq_id\":\"ios-briefkasten-bat\",\"stat_t\":\"briefkasten/a\",\"unit_of_meas\":\"%\",\"json_attr_t\":\"briefkasten/att\",\"dev_cla\":\"battery\"}";
 	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
@@ -138,7 +138,7 @@ void publishBattery(void) {
 	sprintf(att, "{\"ADC\":%d,\"Voltage\":%1.2f}", adc, voltage);
 	client.publish("briefkasten/att", att, (bool)true);
 	client.publish("briefkasten/v", String(voltage).c_str(), (bool)true);
-	client.publish("briefkasten/b", String(percent).c_str(), (bool)true);
+	client.publish("briefkasten/a", String(percent).c_str(), (bool)true);
 	
 }
 
