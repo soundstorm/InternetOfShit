@@ -12,19 +12,9 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoOTA.h>
+#include "config.h"
 
-IPAddress MQTT_SERVER(10, 0, 0, 1); // IP of your Broker
-//const char* MQTT_SERVER = "mqtt.arduino-hannover.de"; // Or FQDN
-const char* MQTT_USER = NULL;
-const char* MQTT_PASSWORD = NULL;
-
-const char* WIFI_SSID = "ssid";
-const char* WIFI_PASSWORD = "password";
-
-// You may need to adjust this to fit your resistor tolerance exactly
-const double ADC_TO_VOLTAGE = 0.004324894515;
-
-const char SW_VERSION[] = "1.5";
+const char SW_VERSION[] = "1.6";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -53,9 +43,10 @@ void setup() {
 	button[4] = digitalRead(14);
 	led.begin();
 	Serial.begin(115200);
-  
+
+	WiFi.mode(WIFI_STA);
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  
+
 	uint32_t con_start = millis();
 	int8_t f = 0;
 	Serial.println("Connecting...");
@@ -139,7 +130,6 @@ void publishBattery(void) {
 	client.publish("briefkasten/att", att, (bool)true);
 	client.publish("briefkasten/v", String(voltage).c_str(), (bool)true);
 	client.publish("briefkasten/a", String(percent).c_str(), (bool)true);
-	
 }
 
 void blink(uint8_t n, uint32_t c) {
@@ -168,11 +158,13 @@ void loop() {
 		blink(5, 0x88);
 	} else { // No closed contact recognized
 	}
+#ifdef GRACEFUL_SHUTDOWN
 	/*
 	 * Graceful shutdown, if you don't want to report problem/voltage while any contact is still closed
-	 * Use client.disconnect() but then comment client.publish / publishBattery at the end
 	 */
-	//client.disconnect();
+	client.disconnect();
+	WiFi.mode(WIFI_OFF);
+#endif
 	for (uint8_t i = 0; i < 5; i++) {
 		Serial.print("Button ");
 		Serial.print(i+1);
@@ -190,10 +182,12 @@ void loop() {
 	pinMode(SHDN_PIN, INPUT);
 	while (true) { // As long as any contact is closed report battery voltage every 60s
 		delay(60000);
+#ifndef GRACEFUL_SHUTDOWN
 		// Something keeps us awake, activate "problem" sensor
 		// Stays on until we disconnect and send our last will
 		client.publish("briefkasten/b", "ON", (bool)true);
 		publishBattery();
+#endif
 	}
 	// Deepsleep doesn't work as the ESP is drawing too less current then to shutdown the system
 }
