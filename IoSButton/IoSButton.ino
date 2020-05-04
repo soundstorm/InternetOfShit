@@ -121,7 +121,7 @@ void loop() {
 	}
 	client.disconnect();
 	WiFi.mode(WIFI_OFF);
-	if (!digitalRead(4) || !digitalRead(14) || !(digitalRead(13) & digitalRead(12))) {
+	if (digitalRead(4) || digitalRead(14) || (digitalRead(13) & digitalRead(12))) {
 		// Not yet all contacts open again
 		blink(1, 0x000088);
 		led.setPixelColor(0, 0x010000); // Set dim red to show "I'm alive" but not drawing too much current
