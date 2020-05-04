@@ -14,7 +14,7 @@
 #include <ArduinoOTA.h>
 #include "config.h"
 
-const char SW_VERSION[] = "1.6";
+const char SW_VERSION[] = "1.6.1";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -80,7 +80,7 @@ void setup() {
 		ESP.restart();
 	}
 	client.loop();
-	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\"+ SW_VERSION +\"}";
+	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"Briefkasten\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Socket\",\"sw\":\""+ SW_VERSION +"\"}";
 	String msg = String("{\"name\":\"Briefkasten\",") + dev + ",\"uniq_id\":\"ios-briefkasten\",\"stat_t\":\"briefkasten\",\"dev_cla\":\"occupancy\"}";
 	client.beginPublish("homeassistant/binary_sensor/briefkasten/config", msg.length(), true);
 	client.print(msg.c_str());
