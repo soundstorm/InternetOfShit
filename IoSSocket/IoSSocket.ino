@@ -171,7 +171,7 @@ void loop() {
 		Serial.print(": ");
 		Serial.println(button[i]);
 	}
-	if (!digitalRead(4) || !digitalRead(5) || !digitalRead(12) || !digitalRead(13) || !digitalRead(14)) {
+	if (digitalRead(4) || digitalRead(5) || digitalRead(12) || digitalRead(13) || digitalRead(14)) {
 		// Not yet all contacts open again
 		blink(1, 0x000088);
 		led.setPixelColor(0, 0x010000); // Set dim red to show "I'm alive" but not drawing too much current
