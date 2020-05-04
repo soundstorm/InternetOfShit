@@ -1,36 +1,47 @@
+/*
+ * This example acts as simple toggle switch for Home Assistant
+ * Configuration is automatically done via MQTT auto discovery
+ * Just configure your MQTT and WiFi settings and you're good to go
+ * Please do not change the entity-id as it's used as base for toggling
+ * You can change the name via Home Assistant if you like
+ * 
+ * Change config.h to match your network parameters
+ */
+
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 #include <ArduinoOTA.h>
+#include "config.h"
+
+const char SW_VERSION[] = "1.2";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
-const uint8_t BTN1_PIN = 4;
-const uint8_t BTN2_PIN = 14;
-const uint8_t BTN3_PIN = 13;
-const uint8_t BTN3_PIN_ALT = 12;
 
 boolean button[3];
 Adafruit_NeoPixel led = Adafruit_NeoPixel(1, LED_PIN, NEO_RGB + NEO_KHZ800);
-bool otaRunning = false;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 void setup() {
 	digitalWrite(SHDN_PIN, HIGH);
 	pinMode(SHDN_PIN, OUTPUT);
-	pinMode(BTN1_PIN, INPUT_PULLUP);
-	pinMode(BTN2_PIN, INPUT_PULLUP);
-	pinMode(BTN3_PIN, INPUT_PULLUP);
-	pinMode(BTN3_PIN_ALT, INPUT_PULLUP);
-	Serial.begin(115200);
-	button[0] = digitalRead(BTN1_PIN);
-	button[1] = digitalRead(BTN2_PIN);
-	button[2] = digitalRead(BTN3_PIN) & digitalRead(BTN3_PIN_ALT);
-	Serial.println(button[0] | (button[1] << 1) | (button[2] << 2));
+	pinMode(4, INPUT_PULLUP);
+	pinMode(14, INPUT_PULLUP);
+	pinMode(13, INPUT_PULLUP);
+	pinMode(12, INPUT_PULLUP);
+	button[0] = digitalRead(4);
+	button[1] = digitalRead(14);
+	// To compensate different ESP-M3 Pinouts we check for both pins
+	button[2] = digitalRead(13) & digitalRead(12);
 	led.begin();
-	
-	WiFi.begin("WIFI", "Password");
+	Serial.begin(115200);
 
+	WiFi.mode(WIFI_STA);
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-	
 	uint32_t con_start = millis();
 	int8_t f = 0;
 	Serial.println("Connecting...");
@@ -50,63 +61,29 @@ void setup() {
 		digitalWrite(SHDN_PIN, LOW);
 		delay(50);
 	}
+	client.setServer(MQTT_SERVER, 1883);
 	
-	if (button[0] && !(button[1] | button[2])) {
-		if (digitalRead(BTN1_PIN) && digitalRead(BTN2_PIN) && digitalRead(BTN3_PIN) && digitalRead(BTN3_PIN_ALT)) {
-			Serial.println("OTA");
-			delay(1000);
-			Serial.println("PORT");
-			ArduinoOTA.setPort(8285);
-			Serial.println("PASS");
-			ArduinoOTA.setPassword((const char *)"Internet0fSh1t");
-			Serial.println("HOST");
-			ArduinoOTA.setHostname("IoSButton");
-			Serial.println("ONSTART");
-			ArduinoOTA.onStart([](){
-				otaRunning = true;
-				if (ArduinoOTA.getCommand() == U_FLASH) {
-					led.setPixelColor(0, 128, 128, 0);
-				} else {
-					led.setPixelColor(0, 0, 0, 128);
-				}
-				led.show();
-			});
-			Serial.println("ONERROR");
-			ArduinoOTA.onError([](ota_error_t error) {
-				if (error == OTA_AUTH_ERROR) {
-					blink(1, 0x880000);
-				} else if (error == OTA_BEGIN_ERROR) {
-					blink(2, 0x880000);
-				} else if (error == OTA_CONNECT_ERROR) {
-					blink(3, 0x880000);
-				} else if (error == OTA_RECEIVE_ERROR) {
-					blink(4, 0x880000);
-				} else if (error == OTA_END_ERROR) {
-					blink(5, 0x880000);
-				}
-			});
-			Serial.println("BEGIN");
-			ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-				uint8_t f = progress*128/total;
-				led.setPixelColor(0, 128 - f, f, 0);
-				led.show();
-			});
-			Serial.println("BEGIN");
-			ArduinoOTA.begin();
-			uint32_t st = millis();
-			while (millis() < st+60000) {
-				if (!otaRunning) {
-					f = millis()/10;
-					led.setPixelColor(0, abs(f), abs(f), abs(f));
-					led.show();
-					delay(1);
-				}
-				ArduinoOTA.handle();
-			}
-			delay(10000);
-			digitalWrite(SHDN_PIN, LOW);
-			delay(50);
-		}
+	Serial.println("Connecting MQTT...");
+	if (!client.connect((String("IoS-Button-") + ESP.getChipId()).c_str(), MQTT_USER, MQTT_PASSWORD)) {
+		Serial.println("MQTT Failed");
+		led.setPixelColor(0, 128, 0, 128);
+		led.show();
+		delay(2000);
+		Serial.println("Shutting down.");
+		pinMode(SHDN_PIN, INPUT);
+		delay(50);
+		ESP.restart();
+	}
+	client.loop();
+	
+	client.setServer(MQTT_SERVER, 1883);
+	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"IoS-Button\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Button\",\"sw\":\"" + SW_VERSION + "\"}";
+	String msg;
+	for (uint8_t i = 0; i < 3; i++) {
+		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('binary_sensor.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
+		client.beginPublish((String("homeassistant/binary_sensor/ios-button-") + ESP.getChipId() + "-" + i + "/config").c_str(), msg.length(), true);
+		client.print(msg.c_str());
+		client.endPublish();
 	}
 	led.setPixelColor(0, 0x00AA00);
 	led.show();
@@ -124,22 +101,17 @@ void blink(uint8_t n, uint32_t c) {
 }
 
 void loop() {
-	switch (button[0] | (button[1] << 1) | (button[2] << 2)) {
-		// Hier Aktionen einfügen
-		case 0b001:
-			break;
-		case 0b010:
-			break;
-		case 0b011:
-			break;
-		case 0b100:
-			break;
-		case 0b101:
-			break;
-		case 0b110:
-			break;
-		case 0b111:
-			break;
+	// You may also combine button presses
+	if (button[0]) { // IO4
+		client.publish((String("ios-button/") + ESP.getChipId() + "/0").c_str(), "TOGGLE");
+		blink(1, 0x8800);
+	} else if (button[1]) { // IO14
+		client.publish((String("ios-button/") + ESP.getChipId() + "/1").c_str(), "TOGGLE");
+		blink(2, 0x8800);
+	} else if (button[2]) { // IO13/12
+		client.publish((String("ios-button/") + ESP.getChipId() + "/2").c_str(), "TOGGLE");
+		blink(3, 0x8800);
+	} else { // No closed contact recognized
 	}
 	for (uint8_t i = 0; i < 3; i++) {
 		Serial.print("Button ");
@@ -147,8 +119,15 @@ void loop() {
 		Serial.print(": ");
 		Serial.println(button[i]);
 	}
+	client.disconnect();
+	WiFi.mode(WIFI_OFF);
 	delay(1000);
-	digitalWrite(SHDN_PIN, LOW);
-	delay(50);
-	ESP.restart();
+	if (!digitalRead(4) || !digitalRead(14) || (digitalRead(13) & digitalRead(12))) {
+		// Not yet all contacts open again
+		blink(1, 0x000088);
+		led.setPixelColor(0, 0x010000); // Set dim red to show "I'm alive" but not drawing too much current
+		led.show();
+	}
+	pinMode(SHDN_PIN, INPUT);
+	while (true) delay(10);
 }
