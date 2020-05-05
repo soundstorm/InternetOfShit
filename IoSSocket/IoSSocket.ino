@@ -19,7 +19,8 @@ const char SW_VERSION[] = "1.6.1";
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
 
-boolean button[5];
+const uint8_t NUM_BUTTONS = 5;
+boolean button[NUM_BUTTONS];
 Adafruit_NeoPixel led = Adafruit_NeoPixel(1, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 WiFiClient espClient;
@@ -165,7 +166,7 @@ void loop() {
 	client.disconnect();
 	WiFi.mode(WIFI_OFF);
 #endif
-	for (uint8_t i = 0; i < 5; i++) {
+	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
 		Serial.print("Button ");
 		Serial.print(i+1);
 		Serial.print(": ");
