@@ -125,12 +125,15 @@ void loop() {
 		blink(3, 0x8800);
 	} else { // No closed contact recognized
 	}
+	client.loop();
 	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
 		Serial.print("Button ");
 		Serial.print(i+1);
 		Serial.print(": ");
 		Serial.println(button[i]);
 	}
+	// Wait until published
+	delay(1000);
 	client.disconnect();
 	WiFi.mode(WIFI_OFF);
 	if (digitalRead(4) || digitalRead(14) || (digitalRead(13) & digitalRead(12))) {
