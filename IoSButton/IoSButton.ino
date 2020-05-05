@@ -89,7 +89,7 @@ void setup() {
 #endif //HASS_SWITCH
 	for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
 #ifdef HASS_SWITCH
-		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"~\",\"cmd_t\":\"~\",\"t\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('switch.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
+		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"~\",\"cmd_t\":\"~\",\"~\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('switch.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
 #else  //HASS_SWITCH
 		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('binary_sensor.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
 #endif //HASS_SWITCH
