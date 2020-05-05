@@ -15,3 +15,9 @@ const char* WIFI_PASSWORD = "password";
  * If you want to have it as switch, use the following
  */
 //#define HASS_SWITCH
+/*
+ * Long press can trigger a different switch/sensor
+ * Enable here and define a time in ms to detect long press
+ */
+#define LONGPRESS_ENABLED
+const uint16_t LONGPRESS_DURATION = 700;
