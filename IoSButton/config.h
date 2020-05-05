@@ -9,3 +9,9 @@ const char* MQTT_PASSWORD = NULL;
 
 const char* WIFI_SSID = "ssid";
 const char* WIFI_PASSWORD = "password";
+
+/*
+ * By default the button is recognized as binary sensor
+ * If you want to have it as switch, use the following
+ */
+//#define HASS_SWITCH

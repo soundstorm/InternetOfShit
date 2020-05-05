@@ -6,6 +6,8 @@
  * You can change the name via Home Assistant if you like
  * 
  * Change config.h to match your network parameters
+ * 
+ * Use ESP8285 as target
  */
 
 #include <Adafruit_NeoPixel.h>
@@ -14,7 +16,7 @@
 #include <ArduinoOTA.h>
 #include "config.h"
 
-const char SW_VERSION[] = "1.2";
+const char SW_VERSION[] = "1.3";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -80,7 +82,11 @@ void setup() {
 	String dev = String("\"dev\":{\"ids\":[\"") + ESP.getChipId() + "\"],\"cns\":[[\"mac\",\"" + WiFi.macAddress() + "\"]],\"name\":\"IoS-Button\",\"mf\":\"HannIO\",\"mdl\":\"Internet of Shit Button\",\"sw\":\"" + SW_VERSION + "\"}";
 	String msg;
 	for (uint8_t i = 0; i < 3; i++) {
+#ifdef HASS_SWITCH
+		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"~\",\"cmd_t\":\"~\",\"t\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('switch.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
+#else
 		msg = String("{\"name\":\"IoS-Button ") + ESP.getChipId() + " " + i + "\"," + dev + ",\"uniq_id\":\"ios-button-" + ESP.getChipId() + "-" + i + "\",\"stat_t\":\"ios-button/" + ESP.getChipId() + "/" + i + "\",\"val_tpl\":\"{%if is_state('binary_sensor.ios_button_" + ESP.getChipId() + "_" + i + "',\\\"on\\\")-%}OFF{%-else-%}ON{%-endif%}\"}";
+#endif
 		client.beginPublish((String("homeassistant/binary_sensor/ios-button-") + ESP.getChipId() + "-" + i + "/config").c_str(), msg.length(), true);
 		client.print(msg.c_str());
 		client.endPublish();
