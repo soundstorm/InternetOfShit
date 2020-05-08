@@ -14,7 +14,7 @@
 #include <ArduinoOTA.h>
 #include "config.h"
 
-const char SW_VERSION[] = "1.6.1";
+const char SW_VERSION[] = "1.6.2";
 
 const uint8_t SHDN_PIN = 16;
 const uint8_t LED_PIN  = 2;
@@ -92,7 +92,7 @@ void setup() {
 	client.print(msg.c_str());
 	client.endPublish();
 	msg = String("{\"name\":\"Briefkasten Akku\",") + dev + ",\"uniq_id\":\"ios-briefkasten-bat\",\"stat_t\":\"briefkasten/a\",\"unit_of_meas\":\"%\",\"json_attr_t\":\"briefkasten/att\",\"dev_cla\":\"battery\"}";
-	client.beginPublish("homeassistant/sensor/briefkasten_voltage/config", msg.length(), true);
+	client.beginPublish("homeassistant/sensor/briefkasten_battery/config", msg.length(), true);
 	client.print(msg.c_str());
 	client.endPublish();
 	msg = String("{\"name\":\"Briefkasten Geblockt\",") + dev + ",\"uniq_id\":\"ios-briefkasten-block\",\"stat_t\":\"briefkasten/b\",\"dev_cla\":\"problem\"}";
